@@ -1,5 +1,5 @@
 # gerrit-embed
-Gerrit Code Review embed proxy
+Adds an embed for changes on a specific Gerrit Code Review instance
 
 >[!IMPORTANT]
 >The official instance, crrev.kxtz.dev, is not up yet.
