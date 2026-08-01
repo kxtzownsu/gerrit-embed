@@ -15,9 +15,9 @@ if (process.env.BASE_URL == undefined){
 const PORT = (process.env.PORT !== undefined) ? process.env.PORT : '5173';
 
 app.get('/:change_id', async (req, res) => {
-  let data = await getHTML(req.params.change_id);
-  res.status(data[0]).send(data[1]);
-})
+  const [status, html] = await getHTML(req.params.change_id);
+  res.status(status).send(html);
+});
 
 app.get('/', (req, res) => {
   res.redirect(baseURL)
@@ -35,5 +35,5 @@ server.on('listening', () => {
 
 server.on('error', (err) => {
   console.error(err);
-  console.error(`i hope you're thinking about reporting this to ${githubURL} (pls don't send a report if it's something like EADDRINUSE)`);
+  console.error(`i hope you're thinking about reporting this to ${githubURL} (pls don't send a report if it's EADDRINUSE)`);
 });
