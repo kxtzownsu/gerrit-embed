@@ -10,12 +10,20 @@ try {
 }
 
 export function getHTML(change_id) {
-  if (cachedHTML === null) {
+  let html = cachedHTML;
+
+  if (html === null) {
     return [
       500,
       'Internal Server Error. If you are the Server Administrator, please check the console for more information.'
     ];
   }
 
-  return [200, cachedHTML];
+  parseHTML(html, change_id);
+
+  return [200, html];
+}
+
+export function parseHTML(html, change_id){
+  console.log(`wip, change_id: ${change_id}, html: ${html}`);
 }

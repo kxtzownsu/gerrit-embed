@@ -6,7 +6,12 @@ import 'dotenv/config';
 const app = express();
 
 const githubURL = "https://github.com/kxtzownsu/gerrit-embed";
-const baseURL = (process.env.BASE_URL !== undefined) ? process.env.BASE_URL : githubURL + "#configure";
+
+if (process.env.BASE_URL == undefined){
+  console.error("BASE_URL not set in .env");
+  process.exit(-1);
+}
+
 const PORT = (process.env.PORT !== undefined) ? process.env.PORT : '5173';
 
 app.get('/:change_id', async (req, res) => {
@@ -25,6 +30,10 @@ const server = app.listen({
 
 server.on('listening', () => {
   console.log(`listening on 0.0.0.0:${Number(PORT)}`);
+  console.log(`report any errors to ${githubURL} please and thank you`);
 });
 
-server.on('error', console.error);
+server.on('error', (err) => {
+  console.error(err);
+  console.error(`i hope you're thinking about reporting this to ${githubURL} (pls don't send a report if it's something like EADDRINUSE)`);
+});
