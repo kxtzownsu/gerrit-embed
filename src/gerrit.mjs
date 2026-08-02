@@ -9,6 +9,29 @@ async function fetchGerritJSON(url) {
   return JSON.parse(cleaned);
 }
 
+function getStatus(changeInfo, changeMergeable) {
+  switch (true) { // sorry but i thought switch case looked cleaner
+    case changeInfo.status === "MERGED":
+      return ["Merged", "#a4a4a4"];
+    case changeInfo.status === "ABANDONED":
+      return ["Abandoned", "#dadce0"];
+    case Boolean(changeInfo.revert_of):
+      return ["Revert", "#e8eaed"];
+    case changeMergeable.mergeable === false:
+      return ["Merge Conflict", "#f28b82"];
+    case Boolean(changeInfo.contains_git_conflicts):
+      return ["Git Conflict", "#f28b82"];
+    case Boolean(changeInfo.work_in_progress):
+      return ["WIP", "#bcaaa4"];
+    case Boolean(changeInfo.private):
+      return ["Private", "#d7aefb"];
+    case Boolean(changeInfo.submittable):
+      return ["Ready", "#55c374"];
+    default:
+      return ["Active", "#f4ce5d"];
+  }
+}
+
 export async function getGerritInfo(change_id){
   const base = process.env.BASE_URL;
   const protocol = process.env.PROTOCOL;
@@ -25,38 +48,7 @@ export async function getGerritInfo(change_id){
   change_url = `${url}/c/${change_id}`;
   change_created = changeInfo.created;
 
-  let change_misc_status = '';
-  let statusColor = '';
-
-
-  if (changeInfo.status === "MERGED") {
-    change_misc_status = "Merged";
-    statusColor = "#a4a4a4";
-  } else if (changeInfo.status === "ABANDONED") {
-    change_misc_status = "Abandoned";
-    statusColor = "#dadce0";
-  } else if (changeInfo.revert_of) {
-    change_misc_status = "Revert";
-    statusColor = "#e8eaed";
-  } else if (changeMergeable.mergeable === false) {
-    change_misc_status = "Merge Conflict";
-    statusColor = "#f28b82";
-  } else if (changeInfo.contains_git_conflicts) {
-    change_misc_status = "Git Conflict";
-    statusColor = "#f28b82";
-  } else if (changeInfo.work_in_progress) {
-    change_misc_status = "WIP";
-    statusColor = "#bcaaa4";
-  } else if (changeInfo.private) {
-    change_misc_status = "Private";
-    statusColor = "#d7aefb";
-  } else if (changeInfo.submittable) {
-    change_misc_status = "Ready";
-    statusColor = "#55c374";
-  } else {
-    change_misc_status = "Active";
-    statusColor = "#f4ce5d";
-  }
+  const [change_misc_status, statusColor] = getStatus(changeInfo, changeMergeable);
 
   base_url_meta_description = change_misc_status; // THIS IS NOT HOW IT WILL BE FOR THE FINAL VERSION
 
