@@ -32,25 +32,111 @@ function getStatus(changeInfo, changeMergeable) {
   }
 }
 
-export async function getGerritInfo(change_id){
+// SR == "submit requirements" btw
+const SR_ABBREVIATIONS = {
+  "Code-Review": "CR",
+  "Verified": "V",
+  "No-Unresolved-Comments": "NUC",
+  "Code-Owners": "CO",
+  "Code-Coverage": "CC",
+  "Review-Enforcement": "RE",
+  "Commit-Queue": "CQ",
+  "Recitation-Check": "RC",
+  "Lint": "L",
+  "Bot-Commit": "BC",
+  "Auto-Submit": "AS",
+};
+
+function formatVote(value) {
+  return value > 0 ? `+${value}` : `${value}`;
+}
+
+function getLabelVoteText(label) {
+  if (!label || !Array.isArray(label.all) || label.all.length === 0) return null;
+
+  const nonZero = label.all.filter((v) => typeof v.value === "number" && v.value !== 0);
+  if (nonZero.length === 0) return "NV";
+
+  const extreme = nonZero.reduce((max, v) => (Math.abs(v.value) > Math.abs(max.value) ? v : max));
+  return formatVote(extreme.value);
+}
+
+function getRequirementValue(req, labels) {
+  const voteText = getLabelVoteText(labels?.[req.name]);
+  if (voteText !== null) return voteText;
+
+  if (req.status === "NOT_APPLICABLE") return null;
+
+  if (req.name === "Code-Owners") {
+    return req.status === "SATISFIED" || req.status === "OVERRIDDEN" ? "A" : "U";
+  }
+
+  return req.status === "SATISFIED" || req.status === "OVERRIDDEN" ? "S" : "U";
+}
+
+function getSubmitRequirementsSummary(changeInfo) {
+  const requirements = changeInfo.submit_requirements ?? [];
+  const labels = changeInfo.labels ?? {};
+
+  const srNames = new Set(requirements.map((req) => req.name));
+
+  const requirementParts = requirements
+    .map((req) => {
+      const value = getRequirementValue(req, labels);
+      if (value === null) return null;
+      const abbr = SR_ABBREVIATIONS[req.name] ?? req.name;
+      return `${abbr}: ${value}`;
+    })
+    .filter(Boolean);
+
+  const triggerVoteParts = Object.entries(labels)
+    .filter(([name]) => !srNames.has(name))
+    .map(([name, label]) => [name, getLabelVoteText(label)])
+    .filter(([, vote]) => vote !== null && vote !== "NV")
+    .map(([name, vote]) => `${SR_ABBREVIATIONS[name] ?? name}: ${vote}`);
+
+  return [...requirementParts, ...triggerVoteParts].join(", ");
+}
+
+const FOOTER_LINE = /^[A-Za-z][\w-]*:\s/;
+
+function stripCommitMessage(fullMessage, subject) {
+  let body = fullMessage.startsWith(subject) ? fullMessage.slice(subject.length) : fullMessage;
+  body = body.replace(/^\n+/, "");
+
+  const lines = body.split("\n");
+  while (lines.length > 0) {
+    const last = lines[lines.length - 1];
+    if (last === "" || FOOTER_LINE.test(last)) {
+      lines.pop();
+    } else {
+      break;
+    }
+  }
+
+  return lines.join("\n").replace(/\n+$/, "");
+}
+
+export async function getGerritInfo(change_id) {
   const base = process.env.BASE_URL;
   const protocol = process.env.PROTOCOL;
-  const url = `${protocol}://${base}`
+  const url = `${protocol}://${base}`;
 
-  let color, change_url, change_created, change_updated, change_author_name, change_author_icon, change_commit_subject, change_commit_message, base_url_meta_description, base_url_meta_icon;
-  
-  const changeInfo = await fetchGerritJSON(`${url}/changes/${change_id}`);
+  const changeInfo = await fetchGerritJSON(
+    `${url}/changes/${change_id}?o=SUBMIT_REQUIREMENTS&o=LABELS`
+  );
   const changeMessage = await fetchGerritJSON(`${url}/changes/${change_id}/message`);
   const changeDetail = await fetchGerritJSON(`${url}/changes/${change_id}/detail`);
   const changeMergeable = await fetchGerritJSON(`${url}/changes/${change_id}/revisions/current/mergeable`);
-  base_url_meta_icon = `https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Gerrit_icon.svg/960px-Gerrit_icon.svg.png`
+  const base_url_meta_icon = `https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Gerrit_icon.svg/960px-Gerrit_icon.svg.png`;
 
-  change_url = `${url}/c/${change_id}`;
-  change_created = changeInfo.created;
-
+  const change_url = `${url}/c/${change_id}`;
   const [change_misc_status, statusColor] = getStatus(changeInfo, changeMergeable);
+  const requirementsSummary = getSubmitRequirementsSummary(changeInfo);
 
-  base_url_meta_description = change_misc_status; // THIS IS NOT HOW IT WILL BE FOR THE FINAL VERSION
+  const base_url_meta_description = requirementsSummary
+    ? `${change_misc_status} | ${requirementsSummary}`
+    : change_misc_status;
 
   return {
     color: statusColor,
@@ -64,14 +150,14 @@ export async function getGerritInfo(change_id){
       },
       commit: {
         subject: changeMessage.subject,
-        message: change_commit_message, // todo: we need to properly do '\n' stuff and cut off at 'Change-Id:' stuff
+        message: stripCommitMessage(changeMessage.full_message, changeMessage.subject),
       },
     },
     base_url: {
       meta: {
-        description: base_url_meta_description, // examples for future me: "Merged | CR: +2, V: +1, CO: A, CC: NV, RE: S", "Active | CR: +1, V: +1, NUC: U, CO: A, CC: NV, RE: S". where CR=Code-Review, V=Verified, NUC=No-Unresolved-Comments, CO=Code-Owners, CC=Code-Coverage, RE=Review-Enforcement, U=Unsatisfied, NV=No Votes, S=Satisfied, A=Approved
-        icon: base_url_meta_icon // /favicon.ico, fallback to wikimedia svg
-      }
-    }
+        description: base_url_meta_description,
+        icon: base_url_meta_icon,
+      },
+    },
   };
 }
