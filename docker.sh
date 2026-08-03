@@ -63,6 +63,8 @@ docker run -d \
 
 echo "App is now running on port $PORT."
 
+# TODO(kxtz): this should only show if the two ports don't match.
+# Or maybe we just don't even run the docker container if it doesn't match?
 if [ -f "$ENV_FILE" ]; then
   echo "$ENV_FILE specified the following port:"
   grep 'PORT=' "$ENV_FILE" | awk '{print $1}'
