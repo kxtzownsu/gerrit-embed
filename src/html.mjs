@@ -9,7 +9,7 @@ const serverError = [
 let cachedHTML;
 
 try {
-  cachedHTML = await readFile('./src/base.html', 'utf8');
+  cachedHTML = await readFile('./src/html/embed.html', 'utf8');
 } catch (err) {
   console.error('Error reading file:', err);
   cachedHTML = null;

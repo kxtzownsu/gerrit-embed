@@ -10,7 +10,7 @@ sending the final HTML to the client.
   <meta name="description" content="{{ change.commit.message }}">
   <meta name="theme-color" content="{{ color }}">
 
-  <link rel="canonical" href="{{ change.url }}">
+  <meta http-equiv="refresh" content="3; url={{ change.url }}">
 
   <meta property="og:type" content="article">
   <meta property="og:title" content="{{ change.commit.subject }}">
@@ -66,3 +66,22 @@ sending the final HTML to the client.
   }
   </script>
 </head>
+
+<body>
+  {{ redirect.text }}
+</body>
+
+<style>
+  body {
+    background-color: #1e1e2e;
+    color: #cdd6f4;
+  }
+
+  a {
+    color: #89b4fa;
+  }
+
+  a:visited {
+    color: #cba6f7;
+  }
+</style>

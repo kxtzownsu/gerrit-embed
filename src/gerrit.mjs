@@ -1,6 +1,12 @@
+class GerritNotFoundError extends Error {}
+
 async function fetchGerritJSON(url) {
   const res = await fetch(url);
   const text = await res.text();
+
+  if (res.status === 404) {
+    throw new GerritNotFoundError(text);
+  }
 
   const cleaned = text.startsWith(")]}'")
     ? text.slice(text.indexOf('\n') + 1)
@@ -117,18 +123,56 @@ function stripCommitMessage(fullMessage, subject) {
   return lines.join("\n").replace(/\n+$/, "");
 }
 
+const GERRIT_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Gerrit_icon.svg/960px-Gerrit_icon.svg.png";
+
+function getNotFoundInfo(url, change_id) {
+  return {
+    color: "#f28b82", // merge conflict color
+    change: {
+      url: `${url}`,
+      created: "",
+      updated: "",
+      author: {
+        name: "Unknown",
+        icon: GERRIT_ICON_URL,
+      },
+      commit: {
+        subject: "Not Found",
+        message: "This change does not exist or is not visible to you.",
+      },
+    },
+    base_url: {
+      meta: {
+        description: "Not Found",
+        icon: GERRIT_ICON_URL,
+      },
+    },
+    redirect: {
+      text: `Change ID ${change_id} not found. Redirecting to <a href="${url}">${url}</a> in 3 seconds.`
+    }
+  };
+}
+
 export async function getGerritInfo(change_id) {
   const base = process.env.BASE_URL;
   const protocol = process.env.PROTOCOL;
   const url = `${protocol}://${base}`;
 
-  const changeInfo = await fetchGerritJSON(
-    `${url}/changes/${change_id}?o=SUBMIT_REQUIREMENTS&o=LABELS`
-  );
+  let changeInfo;
+  try {
+    changeInfo = await fetchGerritJSON(
+      `${url}/changes/${change_id}?o=SUBMIT_REQUIREMENTS&o=LABELS`
+    );
+  } catch (err) {
+    if (err instanceof GerritNotFoundError) {
+      return getNotFoundInfo(url, change_id);
+    }
+    throw err;
+  }
+
   const changeMessage = await fetchGerritJSON(`${url}/changes/${change_id}/message`);
   const changeDetail = await fetchGerritJSON(`${url}/changes/${change_id}/detail`);
   const changeMergeable = await fetchGerritJSON(`${url}/changes/${change_id}/revisions/current/mergeable`);
-  const base_url_meta_icon = `https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Gerrit_icon.svg/960px-Gerrit_icon.svg.png`;
 
   const change_url = `${url}/c/${change_id}`;
   const [change_misc_status, statusColor] = getStatus(changeInfo, changeMergeable);
@@ -156,8 +200,11 @@ export async function getGerritInfo(change_id) {
     base_url: {
       meta: {
         description: base_url_meta_description,
-        icon: base_url_meta_icon,
+        icon: GERRIT_ICON_URL,
       },
     },
+    redirect: {
+      text: `Redirecting to <a href="${change_url}">${change_url}</a> in 3 seconds.`
+    }
   };
 }

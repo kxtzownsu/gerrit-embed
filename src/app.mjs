@@ -13,6 +13,7 @@ if (process.env.BASE_URL == undefined){
 }
 
 const PORT = (process.env.PORT !== undefined) ? process.env.PORT : '5173';
+const PROTOCOL = (process.env.PROTOCOL !== undefined) ? process.env.PROTOCOL : 'https';
 
 app.get('/:change_id', async (req, res) => {
   const [status, html] = await getHTML(req.params.change_id);
@@ -20,8 +21,13 @@ app.get('/:change_id', async (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  res.redirect(baseURL)
+  const base_url = `${PROTOCOL}://${process.env.BASE_URL}`;
+  res.redirect(base_url);
 });
+
+app.get('/report', (req, res) => {
+  res.redirect(githubURL);
+})
 
 const server = app.listen({
   host: '0.0.0.0',
