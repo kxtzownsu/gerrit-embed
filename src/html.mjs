@@ -1,6 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { getGerritInfo } from './gerrit.mjs'
 
+const RAW_KEYS = new Set(["redirect.text"]);
+
 function escapeHtml(str) {
   return String(str)
     .replaceAll("&", "&amp;")
@@ -40,13 +42,11 @@ export async function parseHTML(template, change_id) {
 
     html = html.replace(
       /\{\{\s*([^}]+)\s*\}\}/g,
-      (_, key) => {
-        const value = key
-          .trim()
-          .split('.')
-          .reduce((obj, part) => obj?.[part], data);
+      (_, rawKey) => {
+        const key = rawKey.trim();
+        const value = key.split('.').reduce((obj, part) => obj?.[part], data);
 
-        return escapeHtml(value ?? '');
+        return RAW_KEYS.has(key) ? (value ?? '') : escapeHtml(value ?? '');
       }
     );
   } catch (err) {
