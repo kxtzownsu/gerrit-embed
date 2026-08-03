@@ -1,3 +1,6 @@
+import { readFile } from 'node:fs/promises';
+import { getGerritInfo } from './gerrit.mjs'
+
 function escapeHtml(str) {
   return String(str)
     .replaceAll("&", "&amp;")
@@ -5,6 +8,28 @@ function escapeHtml(str) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+const serverError = [
+      500,
+      'Internal Server Error. If you are the Server Administrator, please check the console for more information.'
+    ];
+
+let cachedHTML;
+
+try {
+  cachedHTML = await readFile('./src/html/embed.html', 'utf8');
+} catch (err) {
+  console.error('Error reading file:', err);
+  cachedHTML = null;
+}
+
+export async function getHTML(change_id) {
+  if (cachedHTML === null) {
+    return serverError;
+  }
+
+  return parseHTML(cachedHTML, change_id);
 }
 
 export async function parseHTML(template, change_id) {
