@@ -12,7 +12,7 @@ if (process.env.BASE_URL == undefined){
   process.exit(-1);
 }
 
-const PORT = (process.env.PORT !== undefined) ? process.env.PORT : '5173';
+const PORT = (process.env.PORT !== undefined) ? process.env.PORT : '3000';
 const PROTOCOL = (process.env.PROTOCOL !== undefined) ? process.env.PROTOCOL : 'https';
 
 app.get('/:change_id', async (req, res) => {
