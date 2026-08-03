@@ -51,6 +51,7 @@ const SR_ABBREVIATIONS = {
   "Lint": "L",
   "Bot-Commit": "BC",
   "Auto-Submit": "AS",
+  "SLSA-Policy-Verified": "SLSA-PV",
 };
 
 function formatVote(value) {
